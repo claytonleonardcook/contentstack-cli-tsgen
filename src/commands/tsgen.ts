@@ -1,8 +1,9 @@
 import {Command} from '@contentstack/cli-command'
 import {flags} from '@contentstack/cli-utilities'
-import {getGlobalFields, stackConnect, StackConnectionConfig} from '../lib/stack/client'
+import {getGlobalFields} from '../lib/stack/client'
 import {ContentType} from '../lib/stack/schema'
 import tsgenRunner from '../lib/tsgen/runner'
+import {Stack as stack} from 'contentstack'
 
 export default class TypeScriptCodeGeneratorCommand extends Command {
   static description = 'generate TypeScript typings from a Stack';
@@ -14,9 +15,33 @@ export default class TypeScriptCodeGeneratorCommand extends Command {
   ];
 
   static flags: any = {
-    'token-alias': flags.string({
+    deliveryToken: flags.string({
+      char: 't',
+      description: 'delivery token',
+      hidden: false,
+      multiple: false,
+      required: true,
+    }),
+
+    apiKey: flags.string({
       char: 'a',
-      description: 'delivery token alias',
+      description: 'api key',
+      hidden: false,
+      multiple: false,
+      required: true,
+    }),
+
+    environment: flags.string({
+      char: 'e',
+      description: 'environment',
+      hidden: false,
+      multiple: false,
+      required: true,
+    }),
+
+    branch: flags.string({
+      char: 'b',
+      description: 'branch',
       hidden: false,
       multiple: false,
       required: true,
@@ -50,41 +75,61 @@ export default class TypeScriptCodeGeneratorCommand extends Command {
   async run() {
     try {
       const {flags} = await this.parse(TypeScriptCodeGeneratorCommand)
+      const {
+        deliveryToken,
+        apiKey,
+        environment,
+        branch,
+        output,
+        prefix,
+        doc,
+      } = flags
 
-      const token = this.getToken(flags['token-alias'])
-      const prefix = flags.prefix
-      const includeDocumentation = flags.doc
-      const outputPath = flags.output
+      // if (token.type !== "delivery") {
+      //   this.warn(
+      //     "Possibly using a management token. You may not be able to connect to your Stack. Please use a delivery token."
+      //   );
+      // }
 
-      if (token.type !== 'delivery') {
-        this.warn('Possibly using a management token. You may not be able to connect to your Stack. Please use a delivery token.')
-      }
-
-      if (!outputPath || !outputPath.trim()) {
+      if (!output || !output.trim()) {
         this.error('Please provide an output path.', {exit: 2})
       }
 
-      const config: StackConnectionConfig = {
-        apiKey: token.apiKey,
-        token: token.token,
-        region: (this.region.name === 'NA') ? 'us' : this.region.name.toLowerCase(),
-        environment: token.environment || '',
-      }
+      const [client, globalFields] = await Promise.all([
+        stack({
+          api_key: apiKey,
+          delivery_token: deliveryToken,
+          environment: environment,
+          branch: branch,
+        }),
+        getGlobalFields({
+          apiKey: apiKey,
+          token: deliveryToken,
+          environment: environment,
+          region: 'us',
+          branch: branch,
+        }),
+      ])
 
-      const [client, globalFields] = await Promise.all([stackConnect(this.deliveryAPIClient.Stack, config), getGlobalFields(config)])
+      const contentTypes = await client.getContentTypes({
+        include_global_field_schema: true,
+      })
 
-      let schemas: ContentType[] = []
-      if (client.types?.length) {
-        if ((globalFields as any)?.global_fields?.length) {
-          schemas = schemas.concat((globalFields as any).global_fields as ContentType)
-          schemas = schemas.map(schema => ({
-            ...schema,
+      if (contentTypes) {
+        const schemas: ContentType[] = [
+          ...globalFields.global_fields.map(globalField => ({
+            ...globalField,
             schema_type: 'global_field',
-          }))
-        }
-        schemas = schemas.concat(client.types)
-        const result = await tsgenRunner(outputPath, schemas, prefix, includeDocumentation)
-        this.log(`Wrote ${result.definitions} Content Types to '${result.outputPath}'.`)
+          })),
+          ...contentTypes.content_types,
+        ]
+        const {definitions, outputPath} = await tsgenRunner(
+          output,
+          schemas,
+          prefix,
+          doc
+        )
+        this.log(`Wrote ${definitions} Content Types to '${outputPath}'.`)
       } else {
         this.log('No Content Types exist in the Stack.')
       }

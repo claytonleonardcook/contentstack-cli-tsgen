@@ -16,40 +16,43 @@ export type StackConnectionConfig = {
   token: string;
   region: any;
   environment: string;
-}
+  branch: string;
+};
 
-export async function stackConnect(client: any, config: StackConnectionConfig) {
-  try {
-    // eslint-disable-next-line new-cap
-    const stack = client(
-      config.apiKey,
-      config.token,
-      config.environment,
-      config.region
-    )
+// export async function stackConnect(client: any, config: StackConnectionConfig) {
+//   try {
+//     // eslint-disable-next-line new-cap
+//     const stack = client(
+//       config.apiKey,
+//       config.token,
+//       config.environment,
+//       config.region
+//     )
 
-    const results = await stack.getContentTypes({
-      include_global_field_schema: true,
-    })
+//     const results = await stack.getContentTypes({
+//       include_global_field_schema: true,
+//     })
 
-    const types = results.content_types
+//     const types = results.content_types
 
-    if (stack) {
-      return {
-        stack,
-        types,
-      }
-    }
-    throw new Error('Could not connect to the stack.')
-  } catch (error) {
-    throw new Error(
-      'Could not connect to the stack. Please check your credentials.'
-    )
-  }
-}
+//     if (stack) {
+//       return {
+//         stack,
+//         types,
+//       }
+//     }
+//     throw new Error('Could not connect to the stack.')
+//   } catch (error) {
+//     throw new Error(
+//       'Could not connect to the stack. Please check your credentials.'
+//     )
+//   }
+// }
 
 // Currently delivery sdk does not support querying global fields on a stack. Hence direct call is required.
-export async function getGlobalFields(config: StackConnectionConfig) {
+export async function getGlobalFields(
+  config: StackConnectionConfig
+): Promise<{ global_fields: any }> {
   try {
     return new Promise((resolve, reject) => {
       const options: any = {
@@ -60,6 +63,8 @@ export async function getGlobalFields(config: StackConnectionConfig) {
         headers: {
           api_key: config.apiKey,
           access_token: config.token,
+          branch: config.branch,
+          environment: config.environment,
         },
       }
       const req = http.request(options, res => {
@@ -82,6 +87,8 @@ export async function getGlobalFields(config: StackConnectionConfig) {
       req.end()
     })
   } catch (error) {
-    throw new Error('Could not connect to the stack. Please check your credentials.')
+    throw new Error(
+      'Could not connect to the stack. Please check your credentials.'
+    )
   }
 }
