@@ -27,4 +27,24 @@ export const defaultInterfaces = (prefix = '') => [
         title: string;
         href: string;
     }`,
+  `export type TypePublishDetails = {
+        environment: string;
+        locale: string;
+        time: Date;
+        user: string;
+      }`,
+//   `export type TypeResolvedEntry = {
+//         uid: string;
+//         ACL?: object;
+//         _content_type_uid?: string;
+//         created_at?: string;
+//         created_by?: string;
+//         _version?: number;
+//         locale?: 'en-us' | string;
+//         _in_progress?: boolean;
+//         tags?: Array<any>;
+//         publish_details?: TypePublishDetails;
+//         updated_at?: string;
+//         updated_by?: string;
+//       }`,
 ]

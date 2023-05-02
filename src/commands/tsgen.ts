@@ -117,10 +117,12 @@ export default class TypeScriptCodeGeneratorCommand extends Command {
 
       if (contentTypes) {
         const schemas: ContentType[] = [
-          ...globalFields.global_fields.map(globalField => ({
-            ...globalField,
-            schema_type: 'global_field',
-          })),
+          ...globalFields.global_fields.map(globalField => {
+            return {
+              ...globalField,
+              schema_type: 'global_field',
+            }
+          }),
           ...contentTypes.content_types,
         ]
         const {definitions, outputPath} = await tsgenRunner(
